@@ -2,13 +2,14 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <cstdlib>  
+#include <ctime>   
 
-const int WIDTH = 20;  // Ancho del plano
-const int HEIGHT = 2;  // Dos líneas horizontales
+const int WIDTH = 20;  
+const int HEIGHT = 4;  
 
 std::mutex mtx; 
 
-// Función para imprimir el plano
 void printPlane(char plane[HEIGHT][WIDTH]) {
     std::lock_guard<std::mutex> lock(mtx); 
     system("cls"); 
@@ -21,32 +22,49 @@ void printPlane(char plane[HEIGHT][WIDTH]) {
     }
 }
 
-// Función para trasladar las líneas hacia la izquierda y hacia la derecha
+std::string generateRandomPattern() {
+    std::string pattern;
+    for (int i = 0; i < WIDTH; ++i) {
+        pattern += (rand() % 2 == 0) ? '-' : ' '; // Generar aleatoriamente un guion o un espacio en blanco
+    }
+    return pattern;
+}
+
+// traslada las líneas hacia la izquierda y hacia la derecha
 void translate(char plane[HEIGHT][WIDTH]) {
-    int currentPos1 = WIDTH - 1; // Posición actual del guion de la primera línea
-    int currentPos2 = 0; // Posición actual del guion de la segunda línea
+    int currentPos[HEIGHT]; 
+    std::string patterns[HEIGHT]; 
+
+    srand(time(0)); 
+
+    
+    for (int i = 0; i < HEIGHT; ++i) {
+        currentPos[i] = (i % 2 == 0) ? WIDTH - 1 : 0;
+        patterns[i] = generateRandomPattern();
+    }
 
     while (true) {
-        for (int j = 0; j < WIDTH; ++j) {
-            plane[0][j] = (j >= currentPos1 - 4 && j <= currentPos1) ? '-' : ' '; 
-            plane[1][j] = (j >= currentPos2 && j <= currentPos2 + 4) ? '-' : ' '; 
+        // Actualizar cada línea
+        for (int i = 0; i < HEIGHT; ++i) {
+            for (int j = 0; j < WIDTH; ++j) {
+                plane[i][j] = patterns[i][(currentPos[i] + j) % WIDTH]; 
+            }
+
+            if (i % 2 == 0) {
+                --currentPos[i]; 
+                if (currentPos[i] < 0) {
+                    currentPos[i] = WIDTH - 1; // Volver al final del plano si se llega al inicio
+                }
+            } else {
+                ++currentPos[i]; 
+                if (currentPos[i] >= WIDTH) {
+                    currentPos[i] = 0; // Volver al inicio del plano si se llega al final
+                }
+            }
         }
 
         printPlane(plane); // Imprimir el plano actualizado
         std::this_thread::sleep_for(std::chrono::milliseconds(200)); 
-
-        --currentPos1; 
-        ++currentPos2; 
-
-        // Si la posición actual de la primera línea es menor que 0, volver al final del plano
-        if (currentPos1 < 0) {
-            currentPos1 = WIDTH - 1;
-        }
-
-        // Si la posición actual de la segunda línea es mayor o igual al ancho del plano, volver al inicio del plano
-        if (currentPos2 >= WIDTH) {
-            currentPos2 = 0;
-        }
     }
 }
 
@@ -58,7 +76,7 @@ int main() {
         }
     }
 
-    std::thread t1(translate, std::ref(plane)); //hilo para la traslación
+    std::thread t1(translate, std::ref(plane)); // Hilo para la traslación
     t1.join();
 
     return 0;
